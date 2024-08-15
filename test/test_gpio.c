@@ -72,11 +72,101 @@ void test_pinEntrada(void)
     Pin_configura(prueba.pines[PC13],Pin_ENTRADA_ANALOGICA);
     procesaSetReset();
     TEST_ASSERT_EQUAL_HEX32(0x84444444,prueba.puertos[PA].registros->CRL);
-    TEST_ASSERT_EQUAL_HEX32(1<<7      ,prueba.puertos[PA].accionesReset);
-    TEST_ASSERT_EQUAL_HEX32(1<<8      ,prueba.puertos[PA].accionesSet);
     TEST_ASSERT_EQUAL_HEX32(0x44444448,prueba.puertos[PA].registros->CRH);
     TEST_ASSERT_EQUAL_HEX32(0x44044444,prueba.puertos[PC].registros->CRH);
+    TEST_ASSERT_EQUAL_HEX32(1<<7      ,prueba.puertos[PA].accionesReset);
+    TEST_ASSERT_EQUAL_HEX32(1<<8      ,prueba.puertos[PA].accionesSet);
+
+    TEST_ASSERT_EQUAL_HEX32(0x44444444,prueba.puertos[PB].registros->CRL);
+    TEST_ASSERT_EQUAL_HEX32(0x44444444,prueba.puertos[PB].registros->CRH);
+    TEST_ASSERT_EQUAL_HEX32(0x44444444,prueba.puertos[PC].registros->CRL);
+    TEST_ASSERT_EQUAL_HEX32(0         ,prueba.puertos[PB].accionesReset);
+    TEST_ASSERT_EQUAL_HEX32(0         ,prueba.puertos[PB].accionesSet);
+    TEST_ASSERT_EQUAL_HEX32(0         ,prueba.puertos[PC].accionesReset);
+    TEST_ASSERT_EQUAL_HEX32(0         ,prueba.puertos[PC].accionesSet);
 
 }
+
+void test_pinSalida(void)
+{
+    Pin_configura(prueba.pines[PA0], Pin_SALIDA_LENTA);
+    Pin_configura(prueba.pines[PA7], Pin_SALIDA_MEDIA);
+    Pin_configura(prueba.pines[PA8], Pin_SALIDA_RAPIDA);
+    TEST_ASSERT_NOT_NULL(prueba.pines[PA15]);
+    Pin_configura(prueba.pines[PA15],Pin_SALIDA_LENTA  | Pin_DRENADOR_ABIERTO);
+    Pin_configura(prueba.pines[PB5], Pin_SALIDA_RAPIDA | Pin_FUNCION_ALTERNATIVA);
+    Pin_configura(prueba.pines[PC13],Pin_SALIDA_MEDIA  | Pin_DRENADOR_ABIERTO | Pin_FUNCION_ALTERNATIVA);
+    procesaSetReset();
+    TEST_ASSERT_EQUAL_HEX32(0x14444442,prueba.puertos[PA].registros->CRL);
+    TEST_ASSERT_EQUAL_HEX32(0x64444443,prueba.puertos[PA].registros->CRH);
+    TEST_ASSERT_EQUAL_HEX32(0x44B44444,prueba.puertos[PB].registros->CRL);
+    TEST_ASSERT_EQUAL_HEX32(0x44D44444,prueba.puertos[PC].registros->CRH);
+    
+    TEST_ASSERT_EQUAL_HEX32(0x44444444,prueba.puertos[PB].registros->CRH);
+    TEST_ASSERT_EQUAL_HEX32(0x44444444,prueba.puertos[PC].registros->CRL);
+    TEST_ASSERT_EQUAL_UINT32(0        ,prueba.puertos[PA].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0        ,prueba.puertos[PA].accionesSet);
+    TEST_ASSERT_EQUAL_UINT32(0        ,prueba.puertos[PB].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0        ,prueba.puertos[PB].accionesSet);
+    TEST_ASSERT_EQUAL_UINT32(0        ,prueba.puertos[PC].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0        ,prueba.puertos[PC].accionesSet);
+}
+
+void test_pinLee(void)
+{
+    Pin_configura(prueba.pines[PA0], Pin_ENTRADA);
+    TEST_ASSERT_FALSE(Pin_lee(prueba.pines[PA0]));
+    prueba.puertos[PA].registros->IDR = 1;
+    TEST_ASSERT_TRUE(Pin_lee(prueba.pines[PA0]));
+}
+
+void test_pinEscribe(void)
+{
+    Pin_configura(prueba.pines[PA15], Pin_SALIDA_LENTA);
+    Pin_configura(prueba.pines[PA0], Pin_SALIDA_LENTA);
+    Pin_ponAlto(prueba.pines[PA15]);
+    Pin_ponBajo(prueba.pines[PA0]);
+    procesaSetReset();
+    TEST_ASSERT_EQUAL_UINT32(1    , prueba.puertos[PA].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(1<<15, prueba.puertos[PA].accionesSet);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PB].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PB].accionesSet);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PC].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PC].accionesSet);
+}
+
+void test_pinObtEstadoSalida(void)
+{
+    Pin_configura(prueba.pines[PA15], Pin_SALIDA_LENTA);
+    TEST_ASSERT_FALSE(Pin_obtEstadoSalida(prueba.pines[PA15]));
+    Pin_ponAlto(prueba.pines[PA15]);
+    procesaSetReset();
+    TEST_ASSERT_TRUE(Pin_obtEstadoSalida(prueba.pines[PA15]));
+}
+
+void test_pinConmutaEstado(void)
+{
+    Pin_configura(prueba.pines[PC13], Pin_SALIDA_LENTA);
+    Pin_conmuta(prueba.pines[PC13]);
+    procesaSetReset();
+
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PA].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PA].accionesSet);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PB].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PB].accionesSet);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PC].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(1<<13, prueba.puertos[PC].accionesSet);
+
+    Pin_conmuta(prueba.pines[PC13]);
+    procesaSetReset();
+
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PA].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PA].accionesSet);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PB].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PB].accionesSet);
+    TEST_ASSERT_EQUAL_UINT32(1<<13, prueba.puertos[PC].accionesReset);
+    TEST_ASSERT_EQUAL_UINT32(0    , prueba.puertos[PC].accionesSet);
+}
+
 
 #endif // TEST
